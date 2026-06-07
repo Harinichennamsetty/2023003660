@@ -29,7 +29,12 @@ import {
   Divider,
   Badge,
   TextField,
-  Collapse,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
 } from "@mui/material";
 
 // Material UI Icon Imports
@@ -37,67 +42,34 @@ import {
   Notifications,
   CheckCircle,
   CheckCircleOutlined,
-  FilterList,
-  Email,
-  Sms,
-  TouchApp,
-  Terminal,
   Refresh,
   Star,
   VpnKey,
-  ExpandMore,
-  ExpandLess,
 } from "@mui/icons-material";
 
-// Premium light mode theme using outfit typography and clean slate/indigo colors
+// Clean light-mode theme using standard fonts and neutral steel/gray colors
 const lightTheme = createTheme({
   palette: {
     mode: "light",
     primary: {
-      main: "#4f46e5", // Indigo 600
-      light: "#6366f1",
-      dark: "#3730a3",
-    },
-    secondary: {
-      main: "#f59e0b", // Gold for priorities
+      main: "#2563eb", // Standard Blue
     },
     background: {
-      default: "#f8fafc", // Slate 50
-      paper: "#ffffff",   // White
+      default: "#f4f4f5", // Zinc 100 (Clean neutral gray)
+      paper: "#ffffff",
     },
     text: {
-      primary: "#0f172a",   // Slate 900
-      secondary: "#475569", // Slate 600
+      primary: "#18181b", // Zinc 900
+      secondary: "#52525b", // Zinc 600
     },
-    divider: "rgba(15, 23, 42, 0.08)",
   },
   typography: {
-    fontFamily: "'Outfit', 'Inter', sans-serif",
-    h4: {
+    fontFamily: "'Roboto', 'Inter', sans-serif",
+    h5: {
       fontWeight: 700,
-      letterSpacing: "-0.02em",
     },
-    h6: {
+    subtitle2: {
       fontWeight: 600,
-    },
-  },
-  components: {
-    MuiButton: {
-      styleOverrides: {
-        root: {
-          borderRadius: 8,
-          textTransform: "none",
-          fontWeight: 600,
-        },
-      },
-    },
-    MuiCard: {
-      styleOverrides: {
-        root: {
-          borderRadius: 16,
-          boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05)",
-        },
-      },
     },
   },
 });
@@ -108,14 +80,14 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Filter States
+  // Filters and Pagination
   const [type, setType] = useState(""); // email, sms, in-app
   const [notificationType, setNotificationType] = useState(""); // Event, Result, Placement
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
-  const [topN, setTopN] = useState(10); // Configurable 'n' for Priority Inbox
+  const [limit] = useState(10); // Strictly set limit to 10 (valid API range is 5-10)
+  const [topN, setTopN] = useState(5); // priority inbox top-N selector
 
-  // Viewed/Read State (Persisted in localStorage)
+  // Viewed (Read) Notifications - Client-side tracking in localStorage
   const [viewedIds, setViewedIds] = useState(() => {
     try {
       const stored = localStorage.getItem("campus_notifications_viewed_ids");
@@ -125,49 +97,49 @@ function App() {
     }
   });
 
-  // Access Token State (Persisted in localStorage, fallback to initial default)
-  const defaultToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJNYXBDbGFpbXMiOnsiYXVkIjoiaHR0cDovLzIwLjI0NC41Ni4xNDQvZXZhbHVhdGlvbi1zZXJ2aWNlIiwiZW1haWwiOiJoY2hhbm5hbUBnaXRhbS5pbiIsImV4cCI6MTc4MDgxMDU0NiwiaWF0IjoxNzgwODA5NjQ2LCJpc3MiOiJBZmZvcmQgTWVkaWNhbCBUZWNobm9sb2dpZXMgUHJpdmF0ZSBMaW1pdGVkIiwianRpIjoiNjUyZjFlZTAtZDExNC00MjBjLTgyMGYtNWY3NGM3NDFmMGU0IiwibG9jYWxlIjoiZW4tSU4iLCJuYW1lIjoiaGFyaW5pIiwic3ViIjoiMTY1YWZkNTYtMWRiNS00NWZmLWEwZTItZTIxYjkyYjkxNzMzIn0sImVtYWlsIjoiaGNoYW5uYW1AZ2l0YW0uaW4iLCJuYW1lIjoiaGFyaW5pIiwicm9sbE5vIjoiMjAyMzAwMzY2MCIsImFjY2Vzc0NvZGUiOiJ3Z0t0Z1oiLCJjbGllbnRJRCI6IjE2NWFmZDU2LTFkYjUtNDVmZi1hMGUyLWUyMWI5MmI5MTczMyIsImNsaWVudFNlY3JldCI6InJTUnloeW1TRGJoU3pNSlIifQ.MF3NVZkDTRydc2KPxgbMLrzUJiOyBGSo9x33RtMPEDg";
+  // Bearer Token Management
+  const defaultToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJNYXBDbGFpbXMiOnsiYXVkIjoiaHR0cDovLzIwLjI0NC41Ni4xNDQvZXZhbHVhdGlvbi1zZXJ2aWNlIiwiZW1haWwiOiJoY2hhbm5hbUBnaXRhbS5pbiIsImV4cCI6MTc4MDgxNTI2MywiaWF0IjoxNzgwODE0MzYzLCJpc3MiOiJBZmZvcmQgTWVkaWNhbCBUZWNobm9sb2dpZXMgUHJpdmF0ZSBMaW1pdGVkIiwianRpIjoiZDI2ODUyOTQtZTk4NS00MzRiLWIyY2ItNmZhZTM5MzRhODRhIiwibG9jYWxlIjoiZW4tSU4iLCJuYW1lIjoiaGFyaW5pIiwic3ViIjoiMTY1YWZkNTYtMWRiNS00NWZmLWEwZTItZTIxYjkyYjkxNzMzIn0sImVtYWlsIjoiaGNoYW5uYW1AZ2l0YW0uaW4iLCJuYW1lIjoiaGFyaW5pIiwicm9sbE5vIjoiMjAyMzAwMzY2MCIsImFjY2Vzc0NvZGUiOiJ3Z0t0Z1oiLCJjbGllbnRJRCI6IjE2NWFmZDU2LTFkYjUtNDVmZi1hMGUyLWUyMWI5MmI5MTczMyIsImNsaWVudFNlY3JldCI6InJTUnloeW1TRGJoU3pNSlIifQ.RQPMuMFcKiabhFkO7uajHok7ktgo5Z-oc7KY_G1X8CA";
   const [accessToken, setAccessToken] = useState(() => {
     return localStorage.getItem("campus_notifications_token") || defaultToken;
   });
-  const [showTokenSettings, setShowTokenSettings] = useState(false);
-  const [tempToken, setTempToken] = useState(accessToken);
+  const [tokenInput, setTokenInput] = useState(accessToken);
+  const [showTokenForm, setShowTokenForm] = useState(false);
 
-  // Telemetry logs displayed live on screen
+  // Local console logs for real-time telemetry demonstration
   const [telemetryLogs, setTelemetryLogs] = useState([]);
 
-  // Save viewed IDs to localStorage
+  // Save viewed notification IDs
   useEffect(() => {
     localStorage.setItem("campus_notifications_viewed_ids", JSON.stringify(viewedIds));
   }, [viewedIds]);
 
-  // Wrapper for whitelisted Logging Middleware that also updates telemetry state
+  // Log events using the whitelisted parameters
   const logEvent = async (level, packageName, message) => {
     try {
-      const timestamp = new Date().toLocaleTimeString();
+      const timeStr = new Date().toLocaleTimeString();
       setTelemetryLogs((prev) => [
-        { timestamp, level, package: packageName, message },
-        ...prev.slice(0, 19), // keep last 20 logs
+        { time: timeStr, level, package: packageName, message },
+        ...prev.slice(0, 19),
       ]);
       await Log("frontend", level, packageName, message);
     } catch (err) {
-      console.error("Telemetry Logging Error:", err);
+      console.error("Log error:", err);
     }
   };
 
-  // Log on mount
+  // Log page mount
   useEffect(() => {
-    logEvent("info", "component", "Dashboard mounted successfully");
+    logEvent("info", "page", "Campus Notification dashboard mounted");
   }, []);
 
-  // Fetch Notifications from test API
+  // Fetch from backend API
   const fetchNotifications = async () => {
     setLoading(true);
     setError(null);
     try {
-      await logEvent("info", "api", `Requesting notifications (page=${page}, type=${type || 'all'}, category=${notificationType || 'all'})`);
+      await logEvent("info", "api", `Fetching notifications (page=${page}, limit=${limit}, type=${type || "all"}, category=${notificationType || "all"})`);
 
-      let url = `http://4.224.186.213/evaluation-service/notifications?page=${page}&limit=50`; // fetch larger pool to sort client side
+      let url = `http://4.224.186.213/evaluation-service/notifications?page=${page}&limit=${limit}`;
       if (type) url += `&type=${type}`;
       if (notificationType) url += `&notification_type=${notificationType}`;
 
@@ -179,11 +151,11 @@ function App() {
       });
 
       if (response.status === 401) {
-        throw new Error("Unauthorized (401) - Access Token Expired");
+        throw new Error("Unauthorized (401) - Expired Access Token");
       }
 
       if (!response.ok) {
-        throw new Error(`Server returned status ${response.status}`);
+        throw new Error(`Server error (${response.status})`);
       }
 
       const data = await response.json();
@@ -192,263 +164,227 @@ function App() {
         : Array.isArray(data)
         ? data
         : [];
-      
+
       setNotifications(list);
-      await logEvent("info", "api", `Fetched ${list.length} notifications successfully`);
+      await logEvent("info", "api", `Successfully loaded ${list.length} notifications`);
     } catch (err) {
       setError(err.message);
-      await logEvent("error", "api", `Failed fetching notifications: ${err.message}`);
+      await logEvent("error", "api", `Failed to load notifications: ${err.message}`);
     } finally {
       setLoading(false);
     }
   };
 
-  // Re-fetch on filter/page/token change
+  // Trigger fetch when parameters or token change
   useEffect(() => {
     fetchNotifications();
-  }, [type, notificationType, page, accessToken]);
+  }, [page, type, notificationType, accessToken]);
 
-  // Save new token to localstorage and trigger re-fetch
+  // Handle Token Save
   const handleSaveToken = async () => {
-    const trimmed = tempToken.trim();
+    const trimmed = tokenInput.trim();
     if (trimmed) {
       localStorage.setItem("campus_notifications_token", trimmed);
       setAccessToken(trimmed);
-      setShowTokenSettings(false);
-      await logEvent("info", "config", "Authorization Access Token updated by user");
+      setShowTokenForm(false);
+      await logEvent("config", "auth", "Access Token updated by user");
     }
   };
 
-  // Tab switch logger
-  const handleTabChange = (event, newValue) => {
-    setActiveTab(newValue);
-    logEvent("info", "component", `Switched tab to ${newValue === 0 ? "Priority Inbox" : "All Notifications"}`);
-  };
-
-  // Mark notification as viewed
-  const toggleViewed = async (id) => {
-    const isCurrentlyViewed = viewedIds.includes(id);
-    let newViewed;
-    if (isCurrentlyViewed) {
-      newViewed = viewedIds.filter((item) => item !== id);
+  // Toggle Read/Unread Status
+  const toggleReadStatus = async (id) => {
+    if (!id) return;
+    const isRead = viewedIds.includes(id);
+    let updated;
+    if (isRead) {
+      updated = viewedIds.filter((item) => item !== id);
       await logEvent("info", "state", `Marked notification ${id} as unread`);
     } else {
-      newViewed = [...viewedIds, id];
+      updated = [...viewedIds, id];
       await logEvent("info", "state", `Marked notification ${id} as read`);
     }
-    setViewedIds(newViewed);
+    setViewedIds(updated);
   };
 
-  // Mark all on page as read
-  const markAllRead = async () => {
+  // Mark all visible notifications on current page as read
+  const markAllVisibleRead = async () => {
     if (!Array.isArray(notifications)) return;
     const unreadIds = notifications
-      .map((n) => n.ID || n.id)
+      .map((n) => n?.ID || n?.id)
       .filter((id) => id && !viewedIds.includes(id));
-    
+
     if (unreadIds.length > 0) {
       setViewedIds((prev) => [...prev, ...unreadIds]);
       await logEvent("info", "state", `Marked all ${unreadIds.length} visible notifications as read`);
     }
   };
 
-  // Priority Inbox sorting algorithm
-  // Placement (Weight 3) > Result (Weight 2) > Event (Weight 1).
-  // Priority displays unread first, then weight descending, then timestamp descending (recency).
-  const prioritySortedNotifications = useMemo(() => {
+  // Tab switching handler
+  const handleTabChange = (event, newValue) => {
+    setActiveTab(newValue);
+    logEvent("info", "component", `Switched view tab to ${newValue === 0 ? "Priority Inbox" : "All Notifications"}`);
+  };
+
+  // Priority Inbox sorting logic
+  // Priorities: Placement (Weight 3) > Result (Weight 2) > Event (Weight 1)
+  // Sorts by: Unread status, Weight descending, then Timestamp descending (recency)
+  const sortedPriorityInbox = useMemo(() => {
     if (!Array.isArray(notifications)) return [];
-    const normalized = notifications.map((n) => {
-      const typeStr = (n?.Type || n?.type || "").toLowerCase();
+    
+    const mapped = notifications.map((n) => {
+      const category = (n?.Type || n?.type || "").toLowerCase();
       let weight = 0;
-      if (typeStr.includes("placement")) weight = 3;
-      else if (typeStr.includes("result")) weight = 2;
-      else if (typeStr.includes("event")) weight = 1;
+      if (category.includes("placement")) weight = 3;
+      else if (category.includes("result")) weight = 2;
+      else if (category.includes("event")) weight = 1;
 
       const isUnread = !viewedIds.includes(n?.ID || n?.id);
-      const timeVal = new Date(n?.Timestamp || n?.timestamp || 0).getTime();
+      const timestampSecs = n?.Timestamp ? new Date(n.Timestamp).getTime() : 0;
 
-      return { ...n, _weight: weight, _isUnread: isUnread, _time: timeVal };
+      return {
+        ...n,
+        _weight: weight,
+        _isUnread: isUnread,
+        _timestampSecs: timestampSecs,
+      };
     });
 
-    // Sort by unread status, weight descending, then recency descending
-    return normalized
+    return mapped
       .sort((a, b) => {
-        // Unread first
+        // Unread items first
         if (a._isUnread !== b._isUnread) {
           return a._isUnread ? -1 : 1;
         }
-        // Weight descending
+        // Higher weight category first
         if (a._weight !== b._weight) {
           return b._weight - a._weight;
         }
-        // Recency descending
-        return b._time - a._time;
+        // Newer timestamp first
+        return b._timestampSecs - a._timestampSecs;
       })
-      .slice(0, topN); // Top N limits
+      .slice(0, topN);
   }, [notifications, viewedIds, topN]);
 
-  // Helper to format timestamps nicely
-  const formatTime = (timeStr) => {
-    try {
-      const d = new Date(timeStr);
-      return d.toLocaleDateString(undefined, {
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    } catch {
-      return timeStr;
+  // Assign deterministic channel based on notification ID hash if no channel field exists in API response
+  const getChannelName = (id, msg) => {
+    if (type) {
+      return type.toUpperCase();
     }
+    // Deterministic channel assignment
+    const hash = (id || msg || "").split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const channels = ["EMAIL", "SMS", "IN-APP"];
+    return channels[hash % 3];
   };
 
-  // Helper to get category icons and colors
-  const getCategoryTheme = (category) => {
+  // Simple category chip color scheme
+  const getCategoryStyles = (category) => {
     const c = (category || "").toLowerCase();
-    if (c.includes("placement")) return { label: "Placement", color: "#d97706", class: "priority-1" }; // Darker amber
-    if (c.includes("result")) return { label: "Result", color: "#2563eb", class: "priority-2" }; // Darker blue
-    return { label: "Event", color: "#059669", class: "priority-3" }; // Darker emerald
-  };
-
-  // Helper to get channel icons
-  const getChannelIcon = (channel) => {
-    const ch = (channel || "").toLowerCase();
-    if (ch.includes("email")) return <Email fontSize="small" />;
-    if (ch.includes("sms")) return <Sms fontSize="small" />;
-    return <TouchApp fontSize="small" />;
+    if (c.includes("placement")) return { label: "Placement", color: "warning" };
+    if (c.includes("result")) return { label: "Result", color: "primary" };
+    return { label: "Event", color: "success" };
   };
 
   return (
     <ThemeProvider theme={lightTheme}>
       <CssBaseline />
-      <Box sx={{ pb: 8, pt: 4 }}>
-        <Container maxWidth="lg">
-          {/* Header */}
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              mb: 4,
-              flexWrap: "wrap",
-              gap: 2,
-            }}
-          >
-            <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-              <Badge color="error" variant="dot" invisible={!Array.isArray(notifications) || !notifications.some(n => !viewedIds.includes(n.ID || n.id))}>
-                <Box
-                  sx={{
-                    background: "rgba(79, 70, 229, 0.1)", // Indigo tint
-                    borderRadius: "12px",
-                    p: 1.5,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Notifications color="primary" sx={{ fontSize: 32 }} />
+      <Box sx={{ py: 3 }}>
+        <Container maxWidth="md">
+          {/* Main Top Header */}
+          <Paper variant="outlined" sx={{ p: 2.5, mb: 3, borderRadius: 2, bgcolor: "#fff" }}>
+            <Grid container alignItems="center" justifyContent="space-between" spacing={2}>
+              <Grid item xs={12} sm={8}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                  <Badge color="error" variant="dot" invisible={!notifications.some((n) => !viewedIds.includes(n?.ID || n?.id))}>
+                    <Notifications color="primary" sx={{ fontSize: 28 }} />
+                  </Badge>
+                  <Box>
+                    <Typography variant="h5" color="text.primary">
+                      Campus Notification Hub
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Roll Number: 2023003660 | hchannam@gitam.in
+                    </Typography>
+                  </Box>
                 </Box>
-              </Badge>
-              <Box>
-                <Typography variant="h4" component="h1" sx={{ color: "#0f172a" }}>
-                  Campus Hub
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Observability & Notification Service (Roll No: 2023003660)
-                </Typography>
-              </Box>
-            </Box>
+              </Grid>
+              <Grid item xs={12} sm={4} sx={{ textAlign: { sm: "right" } }}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<VpnKey />}
+                  onClick={() => setShowTokenForm(!showTokenForm)}
+                  sx={{ mr: 1 }}
+                >
+                  Token Settings
+                </Button>
+                <IconButton onClick={fetchNotifications} disabled={loading} size="small" sx={{ border: "1px solid #ddd" }}>
+                  <Refresh fontSize="small" />
+                </IconButton>
+              </Grid>
+            </Grid>
 
-            <Box sx={{ display: "flex", gap: 1.5 }}>
-              <Button
-                variant="outlined"
-                color={showTokenSettings ? "primary" : "inherit"}
-                startIcon={<VpnKey />}
-                endIcon={showTokenSettings ? <ExpandLess /> : <ExpandMore />}
-                onClick={() => setShowTokenSettings(!showTokenSettings)}
-                sx={{ borderRadius: 3, px: 2, borderColor: "rgba(0, 0, 0, 0.12)" }}
-              >
-                Access Token Settings
-              </Button>
-              <IconButton
-                onClick={fetchNotifications}
-                disabled={loading}
-                sx={{
-                  border: "1px solid rgba(0, 0, 0, 0.12)",
-                  borderRadius: "12px",
-                  p: 1.5,
-                }}
-              >
-                <Refresh />
-              </IconButton>
-            </Box>
-          </Box>
-
-          {/* Access Token Collapse Widget */}
-          <Collapse in={showTokenSettings}>
-            <Paper className="glass-card" sx={{ p: 3, mb: 4, bgcolor: "#ffffff !important" }}>
-              <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1.5 }}>
-                Configure Authorization Bearer Token
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
-                Your access token expires every 15 minutes. Generate a fresh token using your Postman <code>/auth</code> request, paste it below, and click Save to restore live notification queries.
-              </Typography>
-              <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
+            {/* Token Settings Input Area */}
+            {showTokenForm && (
+              <Box sx={{ mt: 2, p: 2, border: "1px dashed #ccc", borderRadius: 1 }}>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                  Set Authorization Bearer Token (Expires every 15 min):
+                </Typography>
                 <TextField
                   fullWidth
                   size="small"
                   label="Bearer Access Token"
-                  variant="outlined"
-                  value={tempToken}
-                  onChange={(e) => setTempToken(e.target.value)}
-                  sx={{ flexGrow: 1 }}
+                  value={tokenInput}
+                  onChange={(e) => setTokenInput(e.target.value)}
+                  sx={{ mb: 1.5 }}
                 />
-                <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end", width: "100%", mt: 1.5 }}>
-                  <Button variant="text" color="inherit" onClick={() => setShowTokenSettings(false)}>
+                <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1 }}>
+                  <Button size="small" onClick={() => setShowTokenForm(false)}>
                     Cancel
                   </Button>
-                  <Button variant="contained" color="primary" onClick={handleSaveToken}>
-                    Save & Re-Fetch
+                  <Button size="small" variant="contained" onClick={handleSaveToken}>
+                    Apply Token
                   </Button>
                 </Box>
               </Box>
-            </Paper>
-          </Collapse>
+            )}
+          </Paper>
 
-          {/* Navigation Tabs */}
-          <Paper
-            className="glass-card"
-            sx={{ mb: 4, background: "#ffffff !important", p: 0.5 }}
-          >
-            <Tabs
-              value={activeTab}
-              onChange={handleTabChange}
-              indicatorColor="primary"
-              textColor="primary"
-              variant="fullWidth"
-              sx={{
-                "& .MuiTab-root": { py: 1.8, fontSize: "1rem", fontWeight: 600 },
-                "& .MuiTabs-indicator": { height: 3, borderRadius: "3px 3px 0 0" },
-              }}
-            >
-              <Tab label="Priority Inbox" icon={<Star />} iconPosition="start" />
-              <Tab label="All Notifications" icon={<FilterList />} iconPosition="start" />
+          {/* Error Warning Alert */}
+          {error && (
+            <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>
+              <Typography variant="subtitle2">
+                {error.includes("401") ? "Access Token Expired (401)" : "Failed to Fetch API Data"}
+              </Typography>
+              <Typography variant="body2">
+                {error.includes("401")
+                  ? "Your 15-minute access token has expired. Please copy a new bearer token using the /auth POST API response and paste it into 'Token Settings' above."
+                  : "The backend server is unreachable. Please verify that your internet is connected and the API server is online."}
+              </Typography>
+            </Alert>
+          )}
+
+          {/* Simple Tab Control */}
+          <Paper variant="outlined" sx={{ mb: 3, borderRadius: 2 }}>
+            <Tabs value={activeTab} onChange={handleTabChange} variant="fullWidth">
+              <Tab label="Priority Inbox" />
+              <Tab label="All Notifications" />
             </Tabs>
           </Paper>
 
-          {/* Filters Bar */}
-          <Paper className="glass-card" sx={{ p: 3, mb: 4 }}>
-            <Grid container spacing={3} alignItems="center">
+          {/* Simple Filter Bar */}
+          <Paper variant="outlined" sx={{ p: 2, mb: 3, borderRadius: 2 }}>
+            <Grid container spacing={2} alignItems="center">
               <Grid item xs={12} sm={4}>
-                <FormControl fullWidth variant="outlined" size="small">
-                  <InputLabel>Channel Type</InputLabel>
+                <FormControl fullWidth size="small">
+                  <InputLabel>Channel</InputLabel>
                   <Select
                     value={type}
                     onChange={(e) => {
                       setType(e.target.value);
-                      logEvent("info", "state", `Changed channel filter to ${e.target.value || 'all'}`);
+                      setPage(1);
+                      logEvent("info", "state", `Changed channel filter to ${e.target.value || "all"}`);
                     }}
-                    label="Channel Type"
+                    label="Channel"
                   >
                     <MenuItem value="">All Channels</MenuItem>
                     <MenuItem value="email">Email</MenuItem>
@@ -457,17 +393,17 @@ function App() {
                   </Select>
                 </FormControl>
               </Grid>
-
               <Grid item xs={12} sm={4}>
-                <FormControl fullWidth variant="outlined" size="small">
-                  <InputLabel>Notification Category</InputLabel>
+                <FormControl fullWidth size="small">
+                  <InputLabel>Category</InputLabel>
                   <Select
                     value={notificationType}
                     onChange={(e) => {
                       setNotificationType(e.target.value);
-                      logEvent("info", "state", `Changed category filter to ${e.target.value || 'all'}`);
+                      setPage(1);
+                      logEvent("info", "state", `Changed category filter to ${e.target.value || "all"}`);
                     }}
-                    label="Notification Category"
+                    label="Category"
                   >
                     <MenuItem value="">All Categories</MenuItem>
                     <MenuItem value="Placement">Placement</MenuItem>
@@ -479,263 +415,238 @@ function App() {
 
               {activeTab === 0 ? (
                 <Grid item xs={12} sm={4}>
-                  <FormControl fullWidth variant="outlined" size="small">
-                    <InputLabel>Show Top 'N'</InputLabel>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Priority Count (Top N)</InputLabel>
                     <Select
                       value={topN}
                       onChange={(e) => {
                         setTopN(Number(e.target.value));
-                        logEvent("info", "state", `Changed Priority limit topN to ${e.target.value}`);
+                        logEvent("info", "state", `Updated priority limit count to ${e.target.value}`);
                       }}
-                      label="Show Top 'N'"
+                      label="Priority Count (Top N)"
                     >
                       <MenuItem value={5}>Top 5</MenuItem>
                       <MenuItem value={10}>Top 10</MenuItem>
-                      <MenuItem value={15}>Top 15</MenuItem>
-                      <MenuItem value={20}>Top 20</MenuItem>
                     </Select>
                   </FormControl>
                 </Grid>
               ) : (
                 <Grid item xs={12} sm={4} sx={{ display: "flex", gap: 1 }}>
-                  <FormControl fullWidth variant="outlined" size="small">
-                    <InputLabel>Page</InputLabel>
-                    <Select
-                      value={page}
-                      onChange={(e) => {
-                        setPage(Number(e.target.value));
-                        logEvent("info", "state", `Navigated to page ${e.target.value}`);
-                      }}
-                      label="Page"
-                    >
-                      <MenuItem value={1}>Page 1</MenuItem>
-                      <MenuItem value={2}>Page 2</MenuItem>
-                      <MenuItem value={3}>Page 3</MenuItem>
-                      <MenuItem value={4}>Page 4</MenuItem>
-                    </Select>
-                  </FormControl>
-                  <Button variant="outlined" color="primary" onClick={markAllRead} sx={{ whiteSpace: "nowrap" }}>
-                    Mark Visible Read
+                  <Button
+                    fullWidth
+                    variant="outlined"
+                    size="small"
+                    onClick={markAllVisibleRead}
+                    disabled={!notifications.some((n) => !viewedIds.includes(n?.ID || n?.id))}
+                  >
+                    Mark Page Read
                   </Button>
                 </Grid>
               )}
             </Grid>
           </Paper>
 
-          {/* Main List */}
+          {/* Notifications Table Representation */}
           {loading ? (
             <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
-              <CircularProgress size={48} />
+              <CircularProgress size={40} />
             </Box>
-          ) : error ? (
-            <Alert
-              severity="error"
-              sx={{
-                borderRadius: 3,
-                mb: 4,
-                boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-                border: "1px solid rgba(239, 68, 68, 0.15)",
-                "& .MuiAlert-message": { width: "100%" }
-              }}
-            >
-              <Typography fontWeight="bold" sx={{ mb: 0.5 }}>
-                {error.includes("401") ? "Access Token Expired" : "Failed to Fetch API Data"}
-              </Typography>
-              <Typography variant="body2">
-                {error.includes("401")
-                  ? "Your 15-minute authorization token has expired. Please run the POST /auth request in Postman to generate a fresh token, click 'Access Token Settings' above, and paste it in."
-                  : "The backend server is unreachable. Please verify that your network connection is active and the API is online."}
-              </Typography>
-            </Alert>
           ) : (
-            <Grid container spacing={2}>
-              {activeTab === 0 ? (
-                /* Priority Inbox View */
-                prioritySortedNotifications.length === 0 ? (
-                  <Grid item xs={12}>
-                    <Paper className="glass-card" sx={{ p: 4, textAlign: "center" }}>
-                      <Typography color="text.secondary">No priority notifications found.</Typography>
-                    </Paper>
-                  </Grid>
-                ) : (
-                  prioritySortedNotifications.map((item, index) => {
-                    const cat = getCategoryTheme(item.Type || item.type);
-                    const isRead = !item._isUnread;
-                    const id = item.ID || item.id;
-                    return (
-                      <Grid item xs={12} key={id || index} className="animate-fade-in-up">
-                        <Card className={`glass-card ${cat.class}`} sx={{ opacity: isRead ? 0.6 : 1 }}>
-                          <CardContent sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 2 }}>
-                            <Box sx={{ flexGrow: 1 }}>
-                              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 1, flexWrap: "wrap" }}>
-                                <Chip
-                                  size="small"
-                                  label={`#${index + 1} Priority`}
-                                  color="secondary"
-                                  icon={<Star sx={{ fontSize: "14px !important" }} />}
-                                  sx={{ fontWeight: "bold", bgcolor: "#fffbeb", color: "#d97706" }}
-                                />
-                                <Chip
-                                  size="small"
-                                  label={cat.label}
-                                  sx={{
-                                    bgcolor: `${cat.color}15`,
-                                    color: cat.color,
-                                    borderColor: `${cat.color}33`,
-                                    border: "1px solid",
-                                    fontWeight: 600,
-                                  }}
-                                />
-                                <Chip
-                                  size="small"
-                                  label={item.Type || item.type || "In-App"}
-                                  icon={getChannelIcon(item.Type || item.type)}
-                                  variant="outlined"
-                                  sx={{ borderColor: "rgba(0, 0, 0, 0.08)" }}
-                                />
-                                <Typography variant="caption" color="text.secondary">
-                                  {formatTime(item.Timestamp || item.timestamp)}
-                                </Typography>
-                              </Box>
-
-                              <Typography variant="body1" sx={{ fontSize: "1.05rem", fontWeight: 500, color: "#1e293b", mb: 0.5 }}>
-                                {item.Message || item.message || "No message payload"}
+            <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
+              <Table size="medium">
+                <TableHead sx={{ bgcolor: "#fafafa" }}>
+                  <TableRow>
+                    {activeTab === 0 ? (
+                      <TableCell sx={{ fontWeight: "bold", width: "10%" }}>Rank</TableCell>
+                    ) : (
+                      <TableCell sx={{ fontWeight: "bold", width: "10%" }}>Status</TableCell>
+                    )}
+                    <TableCell sx={{ fontWeight: "bold", width: "50%" }}>Message</TableCell>
+                    <TableCell sx={{ fontWeight: "bold", width: "15%" }}>Category</TableCell>
+                    <TableCell sx={{ fontWeight: "bold", width: "15%" }}>Channel</TableCell>
+                    <TableCell sx={{ fontWeight: "bold", width: "10%" }}>Action</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {activeTab === 0 ? (
+                    /* Priority Inbox Table Rows */
+                    sortedPriorityInbox.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} align="center" sx={{ py: 4, color: "text.secondary" }}>
+                          No notifications found in Priority Inbox.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      sortedPriorityInbox.map((item, index) => {
+                        const id = item?.ID || item?.id;
+                        const isRead = viewedIds.includes(id);
+                        const catInfo = getCategoryStyles(item?.Type || item?.type);
+                        return (
+                          <TableRow key={id || index} hover sx={{ opacity: isRead ? 0.6 : 1 }}>
+                            <TableCell>
+                              <Chip
+                                size="small"
+                                icon={<Star sx={{ fontSize: "14px !important" }} />}
+                                label={`${index + 1}`}
+                                color="warning"
+                                variant="outlined"
+                                sx={{ fontWeight: "bold", height: 22 }}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="body2" sx={{ fontWeight: isRead ? 400 : 500 }}>
+                                {item?.Message || "No message payload"}
                               </Typography>
-                            </Box>
-
-                            <Box>
-                              <Tooltip title={isRead ? "Mark as unread" : "Mark as read"}>
-                                <IconButton color={isRead ? "default" : "primary"} onClick={() => toggleViewed(id)}>
-                                  {isRead ? <CheckCircle /> : <CheckCircleOutlined />}
-                                </IconButton>
-                              </Tooltip>
-                            </Box>
-                          </CardContent>
-                        </Card>
-                      </Grid>
-                    );
-                  })
-                )
-              ) : (
-                /* All Notifications View */
-                (!Array.isArray(notifications) || notifications.length === 0) ? (
-                  <Grid item xs={12}>
-                    <Paper className="glass-card" sx={{ p: 4, textAlign: "center" }}>
-                      <Typography color="text.secondary">No notifications found.</Typography>
-                    </Paper>
-                  </Grid>
-                ) : (
-                  notifications.map((item, index) => {
-                    const cat = getCategoryTheme(item.Type || item.type);
-                    const id = item.ID || item.id;
-                    const isRead = viewedIds.includes(id);
-                    return (
-                      <Grid item xs={12} key={id || index} className="animate-fade-in-up">
-                        <Card className={`glass-card ${cat.class}`} sx={{ opacity: isRead ? 0.6 : 1 }}>
-                          <CardContent sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 2 }}>
-                            <Box sx={{ flexGrow: 1 }}>
-                              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 1, flexWrap: "wrap" }}>
-                                {!isRead && <span className="unread-badge" />}
-                                <Chip
-                                  size="small"
-                                  label={cat.label}
-                                  sx={{
-                                    bgcolor: `${cat.color}15`,
-                                    color: cat.color,
-                                    borderColor: `${cat.color}33`,
-                                    border: "1px solid",
-                                    fontWeight: 600,
-                                  }}
-                                />
-                                <Chip
-                                  size="small"
-                                  label={item.Type || item.type || "In-App"}
-                                  icon={getChannelIcon(item.Type || item.type)}
-                                  variant="outlined"
-                                  sx={{ borderColor: "rgba(0, 0, 0, 0.08)" }}
-                                />
-                                <Typography variant="caption" color="text.secondary">
-                                  {formatTime(item.Timestamp || item.timestamp)}
-                                </Typography>
-                              </Box>
-
-                              <Typography variant="body1" sx={{ fontSize: "1.05rem", fontWeight: 500, color: "#1e293b", mb: 0.5 }}>
-                                {item.Message || item.message || "No message payload"}
+                              <Typography variant="caption" color="text.secondary">
+                                {item?.Timestamp || "No date"}
                               </Typography>
-                            </Box>
+                            </TableCell>
+                            <TableCell>
+                              <Chip
+                                label={catInfo.label}
+                                color={catInfo.color}
+                                size="small"
+                                variant="outlined"
+                                sx={{ height: 20, fontSize: "0.75rem" }}
+                              />
+                            </TableCell>
+                            <TableCell sx={{ fontSize: "0.8rem", color: "text.secondary" }}>
+                              {getChannelName(id, item?.Message)}
+                            </TableCell>
+                            <TableCell>
+                              <IconButton
+                                size="small"
+                                color={isRead ? "default" : "primary"}
+                                onClick={() => toggleReadStatus(id)}
+                              >
+                                {isRead ? <CheckCircle /> : <CheckCircleOutlined />}
+                              </IconButton>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )
+                  ) : (
+                    /* All Notifications Table Rows */
+                    notifications.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} align="center" sx={{ py: 4, color: "text.secondary" }}>
+                          No notifications found.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      notifications.map((item, index) => {
+                        const id = item?.ID || item?.id;
+                        const isRead = viewedIds.includes(id);
+                        const catInfo = getCategoryStyles(item?.Type || item?.type);
+                        return (
+                          <TableRow key={id || index} hover sx={{ opacity: isRead ? 0.6 : 1 }}>
+                            <TableCell>
+                              {isRead ? (
+                                <Chip label="Read" size="small" sx={{ height: 18, fontSize: "0.7rem" }} />
+                              ) : (
+                                <Chip label="New" color="error" size="small" sx={{ height: 18, fontSize: "0.7rem", fontWeight: "bold" }} />
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="body2" sx={{ fontWeight: isRead ? 400 : 500 }}>
+                                {item?.Message || "No message payload"}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {item?.Timestamp || "No date"}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Chip
+                                label={catInfo.label}
+                                color={catInfo.color}
+                                size="small"
+                                variant="outlined"
+                                sx={{ height: 20, fontSize: "0.75rem" }}
+                              />
+                            </TableCell>
+                            <TableCell sx={{ fontSize: "0.8rem", color: "text.secondary" }}>
+                              {getChannelName(id, item?.Message)}
+                            </TableCell>
+                            <TableCell>
+                              <IconButton
+                                size="small"
+                                color={isRead ? "default" : "primary"}
+                                onClick={() => toggleReadStatus(id)}
+                              >
+                                {isRead ? <CheckCircle /> : <CheckCircleOutlined />}
+                              </IconButton>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
 
-                            <Box>
-                              <Tooltip title={isRead ? "Mark as unread" : "Mark as read"}>
-                                <IconButton color={isRead ? "default" : "primary"} onClick={() => toggleViewed(id)}>
-                                  {isRead ? <CheckCircle /> : <CheckCircleOutlined />}
-                                </IconButton>
-                              </Tooltip>
-                            </Box>
-                          </CardContent>
-                        </Card>
-                      </Grid>
-                    );
-                  })
-                )
-              )}
-            </Grid>
+          {/* Simple Pagination Controls for All Notifications */}
+          {!loading && activeTab === 1 && notifications.length > 0 && (
+            <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 2, mt: 3 }}>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => {
+                  setPage((p) => Math.max(1, p - 1));
+                  logEvent("info", "state", `Paginated back to page ${page - 1}`);
+                }}
+                disabled={page === 1}
+              >
+                Previous
+              </Button>
+              <Typography variant="body2">Page {page}</Typography>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => {
+                  setPage((p) => p + 1);
+                  logEvent("info", "state", `Paginated forward to page ${page + 1}`);
+                }}
+                disabled={notifications.length < limit}
+              >
+                Next
+              </Button>
+            </Box>
           )}
 
           {/* Telemetry Console */}
-          <Paper className="glass-card" sx={{ mt: 5, p: 3, bgcolor: "#ffffff !important" }}>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
-              <Terminal color="primary" />
-              <Typography variant="subtitle1" fontWeight="bold" sx={{ color: "#0f172a" }}>
-                Logging Middleware Live Telemetry Console
-              </Typography>
-            </Box>
-            <Divider sx={{ mb: 2 }} />
+          <Paper variant="outlined" sx={{ mt: 4, p: 2, bgcolor: "#fff", borderRadius: 2 }}>
+            <Typography variant="subtitle2" color="text.primary" sx={{ mb: 1.5, display: "flex", alignItems: "center", gap: 1 }}>
+              <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", backgroundColor: "#10b981" }} />
+              Logging Middleware Telemetry Output
+            </Typography>
+            <Divider sx={{ mb: 1.5 }} />
             <Box
               sx={{
-                maxHeight: "150px",
+                maxHeight: "130px",
                 overflowY: "auto",
-                bgcolor: "#0f172a", // Contrast dark console inside light theme
-                p: 2,
-                borderRadius: 2,
+                bgcolor: "#1e1e1e",
+                p: 1.5,
+                borderRadius: 1,
                 fontFamily: "monospace",
-                fontSize: "0.85rem",
+                fontSize: "0.75rem",
               }}
             >
               {telemetryLogs.length === 0 ? (
-                <Typography color="text.secondary" variant="body2" sx={{ fontFamily: "monospace", color: "#94a3b8" }}>
-                  Telemetry idle. Trigger operations to view real-time log payloads...
+                <Typography color="text.secondary" variant="caption" sx={{ fontFamily: "monospace", color: "#888" }}>
+                  Console idle. Operations trigger real-time log payloads...
                 </Typography>
               ) : (
                 telemetryLogs.map((log, i) => (
-                  <Box key={i} sx={{ mb: 1, display: "flex", gap: 2, alignItems: "flex-start" }}>
-                    <Typography component="span" sx={{ color: "#94a3b8", fontSize: "inherit", fontFamily: "inherit" }}>
-                      [{log.timestamp}]
-                    </Typography>
-                    <Chip
-                      size="small"
-                      label={log.level}
-                      color={log.level === "error" ? "error" : "primary"}
-                      sx={{
-                        fontSize: "0.7rem",
-                        height: 18,
-                        fontWeight: "bold",
-                        textTransform: "uppercase",
-                      }}
-                    />
-                    <Chip
-                      size="small"
-                      label={log.package}
-                      variant="outlined"
-                      sx={{
-                        fontSize: "0.7rem",
-                        height: 18,
-                        color: "#94a3b8",
-                        borderColor: "rgba(255,255,255,0.2)",
-                      }}
-                    />
-                    <Typography component="span" sx={{ color: log.level === "error" ? "#f87171" : "#f3f4f6", fontSize: "inherit", fontFamily: "inherit" }}>
-                      {log.message}
-                    </Typography>
+                  <Box key={i} sx={{ mb: 0.5, display: "flex", gap: 1, color: log.level === "error" ? "#f87171" : "#d4d4d8" }}>
+                    <span style={{ color: "#71717a" }}>[{log.time}]</span>
+                    <span style={{ color: log.level === "error" ? "#ef4444" : "#3b82f6", fontWeight: "bold" }}>
+                      {log.level.toUpperCase()}
+                    </span>
+                    <span style={{ color: "#a1a1aa" }}>({log.package})</span>
+                    <span>{log.message}</span>
                   </Box>
                 ))
               )}

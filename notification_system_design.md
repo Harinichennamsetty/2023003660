@@ -6,7 +6,7 @@ This document details the architectural design, priority algorithm, state manage
 
 ## Stage 1: Priority Inbox Algorithm & Stream Efficiency
 
-### Priority inbox Logic
+### Priority Inbox Logic
 The Priority Inbox displays the most important notifications first. Priority is computed using a lexicographical scoring strategy:
 1. **Unread Status (Primary)**: Unread notifications are given higher priority than read notifications.
 2. **Notification Type Weight (Secondary)**: 
@@ -43,25 +43,34 @@ The React frontend is modularly structured to maintain code readability and clea
 ```text
 notification_app_fe/
 ├── src/
-│   ├── assets/             # Images and svg vectors
-│   ├── components/         # Reusable UI elements (NotificationCard, PrioritySelector, FilterBar)
-│   ├── App.css             # Main stylesheet & theme tokens
-│   ├── App.jsx             # App core container & views coordinator
-│   └── main.jsx            # Entrypoint
+│   ├── App.css             # Simplified CSS styles & theme tokens
+│   ├── App.jsx             # App core dashboard & layout logic
+│   ├── index.css           # Standard global CSS resets
+│   └── main.jsx            # React entrypoint
 logging_middleware/
 └── log.js                  # Whitelisted logging client
 ```
+
+### Simple Table-Based Layout Decisions
+For a clear and humanly designed interface, we avoid complex visual over-engineering (such as glassmorphism, glowing card lists, etc.) and instead present notifications in a standard structured table:
+- **Priority Inbox**: Columns include Rank (1-5/10), Message payload (with timestamp subtext), Category (colored chip), Channel, and Actions.
+- **All Notifications**: Columns include Status (Read vs New chip), Message payload, Category, Channel, and Actions.
+- **Typography and Backgrounds**: Standard clean light mode theme using standard Roboto fonts with neutral Zinc backgrounds.
 
 ### State Management
 - **Unread/Viewed Tracking**: Since there is no persistent backend database, the read/unread state of notifications is managed on the client side:
   - We maintain a list of `viewedNotificationIds` in React state.
   - This set is synchronized and persisted in `localStorage` (`campus_notifications_viewed_ids`).
-  - When a card is clicked, it transitions to the viewed state, localStorage is updated, and a log event is emitted.
+  - When a table row's check circle is clicked, it transitions to the viewed state, localStorage is updated, and a log event is emitted.
 - **Filters**: React state manages query parameters (`page`, `limit`, `notification_type`, `type`) and dynamically triggers API fetches when any filter value changes.
+
+### API Limit Constraints
+- The backend notifications endpoint enforces strict pagination parameter checks. Limits outside of `[5, 10]` will immediately fail with `400 Bad Request`.
+- To prevent this, the frontend forces the pagination `limit` to be `10`, which works reliably. The Priority Inbox top-N limit (e.g. top 5 or top 10) is handled cleanly on the client side by slicing the sorted array.
 
 ### Observability & Logging Strategy
 Every important lifecycle event is logged using the Whitelisted Logging Middleware:
 - **API Call Logging**: Log before fetching notifications (`Log("frontend", "info", "api", "...")`) and upon successful response or error.
-- **Component Lifecycle**: Log when the dashboard mounts (`Log("frontend", "info", "component", "...")`).
+- **Component Lifecycle**: Log when the dashboard mounts (`Log("frontend", "info", "page", "...")`).
 - **User Interactions**: Log when a filter value is changed, when a tab is switched, or when a notification is marked as viewed.
-- **Formatting Constraints**: Logs strictly use whitelisted stack (`"frontend"`), level, and package (`"api"`, `"component"`, `"hook"`, `"page"`, `"state"`, `"style"`) parameters in lowercase.
+- **Dynamic Token Sync**: The logging middleware in `log.js` dynamically reads the active authorization token from `localStorage` under the same key. When a user pastes a new access token in the dashboard settings, it immediately applies to both future notification fetches and logging middleware payloads, avoiding `401 Unauthorized` errors.
