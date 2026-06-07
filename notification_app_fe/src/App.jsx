@@ -14,6 +14,7 @@ import {
   CardContent,
   Grid,
   Chip,
+  Button,
   IconButton,
   Select,
   MenuItem,
@@ -174,7 +175,11 @@ function App() {
       }
 
       const data = await response.json();
-      const list = data.notifications || data || [];
+      const list = Array.isArray(data.notifications)
+        ? data.notifications
+        : Array.isArray(data)
+        ? data
+        : [];
       setNotifications(list);
 
       await logEvent("info", "api", `Fetched ${list.length} notifications successfully`);
@@ -227,6 +232,7 @@ function App() {
   // Placement (Weight 3) > Result (Weight 2) > Event (Weight 1).
   // Priority displays unread first, then weight descending, then timestamp descending (recency).
   const prioritySortedNotifications = useMemo(() => {
+    if (!Array.isArray(notifications)) return [];
     const normalized = notifications.map((n) => {
       const typeStr = (n.Type || n.type || "").toLowerCase();
       let weight = 0;
@@ -529,7 +535,7 @@ function App() {
                 )
               ) : (
                 /* All Notifications View */
-                notifications.length === 0 ? (
+                (!Array.isArray(notifications) || notifications.length === 0) ? (
                   <Grid item xs={12}>
                     <Paper className="glass-card" sx={{ p: 4, textAlign: "center" }}>
                       <Typography color="text.secondary">No notifications found.</Typography>
