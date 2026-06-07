@@ -28,6 +28,8 @@ import {
   Paper,
   Divider,
   Badge,
+  TextField,
+  Collapse,
 } from "@mui/material";
 
 // Material UI Icon Imports
@@ -42,32 +44,32 @@ import {
   Terminal,
   Refresh,
   Star,
-  Info,
-  Warning,
-  ErrorOutlined,
+  VpnKey,
+  ExpandMore,
+  ExpandLess,
 } from "@mui/icons-material";
 
-// Premium dark mode theme using outfit typography and curated indigo/slate colors
-const darkTheme = createTheme({
+// Premium light mode theme using outfit typography and clean slate/indigo colors
+const lightTheme = createTheme({
   palette: {
-    mode: "dark",
+    mode: "light",
     primary: {
-      main: "#6366f1", // Indigo
-      light: "#818cf8",
-      dark: "#4f46e5",
+      main: "#4f46e5", // Indigo 600
+      light: "#6366f1",
+      dark: "#3730a3",
     },
     secondary: {
       main: "#f59e0b", // Gold for priorities
     },
     background: {
-      default: "#090d16",
-      paper: "#111827",
+      default: "#f8fafc", // Slate 50
+      paper: "#ffffff",   // White
     },
     text: {
-      primary: "#f8fafc",
-      secondary: "#94a3b8",
+      primary: "#0f172a",   // Slate 900
+      secondary: "#475569", // Slate 600
     },
-    divider: "rgba(255, 255, 255, 0.08)",
+    divider: "rgba(15, 23, 42, 0.08)",
   },
   typography: {
     fontFamily: "'Outfit', 'Inter', sans-serif",
@@ -93,7 +95,7 @@ const darkTheme = createTheme({
       styleOverrides: {
         root: {
           borderRadius: 16,
-          backgroundImage: "none",
+          boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05)",
         },
       },
     },
@@ -122,6 +124,14 @@ function App() {
       return [];
     }
   });
+
+  // Access Token State (Persisted in localStorage, fallback to initial default)
+  const defaultToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJNYXBDbGFpbXMiOnsiYXVkIjoiaHR0cDovLzIwLjI0NC41Ni4xNDQvZXZhbHVhdGlvbi1zZXJ2aWNlIiwiZW1haWwiOiJoY2hhbm5hbUBnaXRhbS5pbiIsImV4cCI6MTc4MDgxMDU0NiwiaWF0IjoxNzgwODA5NjQ2LCJpc3MiOiJBZmZvcmQgTWVkaWNhbCBUZWNobm9sb2dpZXMgUHJpdmF0ZSBMaW1pdGVkIiwianRpIjoiNjUyZjFlZTAtZDExNC00MjBjLTgyMGYtNWY3NGM3NDFmMGU0IiwibG9jYWxlIjoiZW4tSU4iLCJuYW1lIjoiaGFyaW5pIiwic3ViIjoiMTY1YWZkNTYtMWRiNS00NWZmLWEwZTItZTIxYjkyYjkxNzMzIn0sImVtYWlsIjoiaGNoYW5uYW1AZ2l0YW0uaW4iLCJuYW1lIjoiaGFyaW5pIiwicm9sbE5vIjoiMjAyMzAwMzY2MCIsImFjY2Vzc0NvZGUiOiJ3Z0t0Z1oiLCJjbGllbnRJRCI6IjE2NWFmZDU2LTFkYjUtNDVmZi1hMGUyLWUyMWI5MmI5MTczMyIsImNsaWVudFNlY3JldCI6InJTUnloeW1TRGJoU3pNSlIifQ.MF3NVZkDTRydc2KPxgbMLrzUJiOyBGSo9x33RtMPEDg";
+  const [accessToken, setAccessToken] = useState(() => {
+    return localStorage.getItem("campus_notifications_token") || defaultToken;
+  });
+  const [showTokenSettings, setShowTokenSettings] = useState(false);
+  const [tempToken, setTempToken] = useState(accessToken);
 
   // Telemetry logs displayed live on screen
   const [telemetryLogs, setTelemetryLogs] = useState([]);
@@ -161,14 +171,16 @@ function App() {
       if (type) url += `&type=${type}`;
       if (notificationType) url += `&notification_type=${notificationType}`;
 
-      const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJNYXBDbGFpbXMiOnsiYXVkIjoiaHR0cDovLzIwLjI0NC41Ni4xNDQvZXZhbHVhdGlvbi1zZXJ2aWNlIiwiZW1haWwiOiJoY2hhbm5hbUBnaXRhbS5pbiIsImV4cCI6MTc4MDgxMDU0NiwiaWF0IjoxNzgwODA5NjQ2LCJpc3MiOiJBZmZvcmQgTWVkaWNhbCBUZWNobm9sb2dpZXMgUHJpdmF0ZSBMaW1pdGVkIiwianRpIjoiNjUyZjFlZTAtZDExNC00MjBjLTgyMGYtNWY3NGM3NDFmMGU0IiwibG9jYWxlIjoiZW4tSU4iLCJuYW1lIjoiaGFyaW5pIiwic3ViIjoiMTY1YWZkNTYtMWRiNS00NWZmLWEwZTItZTIxYjkyYjkxNzMzIn0sImVtYWlsIjoiaGNoYW5uYW1AZ2l0YW0uaW4iLCJuYW1lIjoiaGFyaW5pIiwicm9sbE5vIjoiMjAyMzAwMzY2MCIsImFjY2Vzc0NvZGUiOiJ3Z0t0Z1oiLCJjbGllbnRJRCI6IjE2NWFmZDU2LTFkYjUtNDVmZi1hMGUyLWUyMWI5MmI5MTczMyIsImNsaWVudFNlY3JldCI6InJTUnloeW1TRGJoU3pNSlIifQ.MF3NVZkDTRydc2KPxgbMLrzUJiOyBGSo9x33RtMPEDg";
-
       const response = await fetch(url, {
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",
         },
       });
+
+      if (response.status === 401) {
+        throw new Error("Unauthorized (401) - Access Token Expired");
+      }
 
       if (!response.ok) {
         throw new Error(`Server returned status ${response.status}`);
@@ -180,8 +192,8 @@ function App() {
         : Array.isArray(data)
         ? data
         : [];
+      
       setNotifications(list);
-
       await logEvent("info", "api", `Fetched ${list.length} notifications successfully`);
     } catch (err) {
       setError(err.message);
@@ -191,10 +203,21 @@ function App() {
     }
   };
 
-  // Re-fetch on filter/page change
+  // Re-fetch on filter/page/token change
   useEffect(() => {
     fetchNotifications();
-  }, [type, notificationType, page]);
+  }, [type, notificationType, page, accessToken]);
+
+  // Save new token to localstorage and trigger re-fetch
+  const handleSaveToken = async () => {
+    const trimmed = tempToken.trim();
+    if (trimmed) {
+      localStorage.setItem("campus_notifications_token", trimmed);
+      setAccessToken(trimmed);
+      setShowTokenSettings(false);
+      await logEvent("info", "config", "Authorization Access Token updated by user");
+    }
+  };
 
   // Tab switch logger
   const handleTabChange = (event, newValue) => {
@@ -218,6 +241,7 @@ function App() {
 
   // Mark all on page as read
   const markAllRead = async () => {
+    if (!Array.isArray(notifications)) return;
     const unreadIds = notifications
       .map((n) => n.ID || n.id)
       .filter((id) => id && !viewedIds.includes(id));
@@ -234,14 +258,14 @@ function App() {
   const prioritySortedNotifications = useMemo(() => {
     if (!Array.isArray(notifications)) return [];
     const normalized = notifications.map((n) => {
-      const typeStr = (n.Type || n.type || "").toLowerCase();
+      const typeStr = (n?.Type || n?.type || "").toLowerCase();
       let weight = 0;
       if (typeStr.includes("placement")) weight = 3;
       else if (typeStr.includes("result")) weight = 2;
       else if (typeStr.includes("event")) weight = 1;
 
-      const isUnread = !viewedIds.includes(n.ID || n.id);
-      const timeVal = new Date(n.Timestamp || n.timestamp || 0).getTime();
+      const isUnread = !viewedIds.includes(n?.ID || n?.id);
+      const timeVal = new Date(n?.Timestamp || n?.timestamp || 0).getTime();
 
       return { ...n, _weight: weight, _isUnread: isUnread, _time: timeVal };
     });
@@ -281,9 +305,9 @@ function App() {
   // Helper to get category icons and colors
   const getCategoryTheme = (category) => {
     const c = (category || "").toLowerCase();
-    if (c.includes("placement")) return { label: "Placement", color: "#f59e0b", class: "priority-1" };
-    if (c.includes("result")) return { label: "Result", color: "#3b82f6", class: "priority-2" };
-    return { label: "Event", color: "#10b981", class: "priority-3" };
+    if (c.includes("placement")) return { label: "Placement", color: "#d97706", class: "priority-1" }; // Darker amber
+    if (c.includes("result")) return { label: "Result", color: "#2563eb", class: "priority-2" }; // Darker blue
+    return { label: "Event", color: "#059669", class: "priority-3" }; // Darker emerald
   };
 
   // Helper to get channel icons
@@ -295,7 +319,7 @@ function App() {
   };
 
   return (
-    <ThemeProvider theme={darkTheme}>
+    <ThemeProvider theme={lightTheme}>
       <CssBaseline />
       <Box sx={{ pb: 8, pt: 4 }}>
         <Container maxWidth="lg">
@@ -311,10 +335,10 @@ function App() {
             }}
           >
             <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-              <Badge color="error" variant="dot" invisible={!notifications.some(n => !viewedIds.includes(n.ID || n.id))}>
+              <Badge color="error" variant="dot" invisible={!Array.isArray(notifications) || !notifications.some(n => !viewedIds.includes(n.ID || n.id))}>
                 <Box
                   sx={{
-                    background: "rgba(99, 102, 241, 0.2)",
+                    background: "rgba(79, 70, 229, 0.1)", // Indigo tint
                     borderRadius: "12px",
                     p: 1.5,
                     display: "flex",
@@ -326,7 +350,7 @@ function App() {
                 </Box>
               </Badge>
               <Box>
-                <Typography variant="h4" component="h1">
+                <Typography variant="h4" component="h1" sx={{ color: "#0f172a" }}>
                   Campus Hub
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
@@ -335,12 +359,22 @@ function App() {
               </Box>
             </Box>
 
-            <Box sx={{ display: "flex", gap: 2 }}>
+            <Box sx={{ display: "flex", gap: 1.5 }}>
+              <Button
+                variant="outlined"
+                color={showTokenSettings ? "primary" : "inherit"}
+                startIcon={<VpnKey />}
+                endIcon={showTokenSettings ? <ExpandLess /> : <ExpandMore />}
+                onClick={() => setShowTokenSettings(!showTokenSettings)}
+                sx={{ borderRadius: 3, px: 2, borderColor: "rgba(0, 0, 0, 0.12)" }}
+              >
+                Access Token Settings
+              </Button>
               <IconButton
                 onClick={fetchNotifications}
                 disabled={loading}
                 sx={{
-                  border: "1px solid rgba(255, 255, 255, 0.08)",
+                  border: "1px solid rgba(0, 0, 0, 0.12)",
                   borderRadius: "12px",
                   p: 1.5,
                 }}
@@ -350,10 +384,41 @@ function App() {
             </Box>
           </Box>
 
+          {/* Access Token Collapse Widget */}
+          <Collapse in={showTokenSettings}>
+            <Paper className="glass-card" sx={{ p: 3, mb: 4, bgcolor: "#ffffff !important" }}>
+              <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1.5 }}>
+                Configure Authorization Bearer Token
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
+                Your access token expires every 15 minutes. Generate a fresh token using your Postman <code>/auth</code> request, paste it below, and click Save to restore live notification queries.
+              </Typography>
+              <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="Bearer Access Token"
+                  variant="outlined"
+                  value={tempToken}
+                  onChange={(e) => setTempToken(e.target.value)}
+                  sx={{ flexGrow: 1 }}
+                />
+                <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end", width: "100%", mt: 1.5 }}>
+                  <Button variant="text" color="inherit" onClick={() => setShowTokenSettings(false)}>
+                    Cancel
+                  </Button>
+                  <Button variant="contained" color="primary" onClick={handleSaveToken}>
+                    Save & Re-Fetch
+                  </Button>
+                </Box>
+              </Box>
+            </Paper>
+          </Collapse>
+
           {/* Navigation Tabs */}
           <Paper
             className="glass-card"
-            sx={{ mb: 4, background: "rgba(17, 24, 39, 0.5) !important" }}
+            sx={{ mb: 4, background: "#ffffff !important", p: 0.5 }}
           >
             <Tabs
               value={activeTab}
@@ -362,7 +427,8 @@ function App() {
               textColor="primary"
               variant="fullWidth"
               sx={{
-                "& .MuiTab-root": { py: 2, fontSize: "1rem", fontWeight: 600 },
+                "& .MuiTab-root": { py: 1.8, fontSize: "1rem", fontWeight: 600 },
+                "& .MuiTabs-indicator": { height: 3, borderRadius: "3px 3px 0 0" },
               }}
             >
               <Tab label="Priority Inbox" icon={<Star />} iconPosition="start" />
@@ -462,8 +528,24 @@ function App() {
               <CircularProgress size={48} />
             </Box>
           ) : error ? (
-            <Alert severity="error" sx={{ borderRadius: 3, mb: 4 }}>
-              {error} - Make sure your backend API is online.
+            <Alert
+              severity="error"
+              sx={{
+                borderRadius: 3,
+                mb: 4,
+                boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+                border: "1px solid rgba(239, 68, 68, 0.15)",
+                "& .MuiAlert-message": { width: "100%" }
+              }}
+            >
+              <Typography fontWeight="bold" sx={{ mb: 0.5 }}>
+                {error.includes("401") ? "Access Token Expired" : "Failed to Fetch API Data"}
+              </Typography>
+              <Typography variant="body2">
+                {error.includes("401")
+                  ? "Your 15-minute authorization token has expired. Please run the POST /auth request in Postman to generate a fresh token, click 'Access Token Settings' above, and paste it in."
+                  : "The backend server is unreachable. Please verify that your network connection is active and the API is online."}
+              </Typography>
             </Alert>
           ) : (
             <Grid container spacing={2}>
@@ -491,15 +573,15 @@ function App() {
                                   label={`#${index + 1} Priority`}
                                   color="secondary"
                                   icon={<Star sx={{ fontSize: "14px !important" }} />}
-                                  sx={{ fontWeight: "bold" }}
+                                  sx={{ fontWeight: "bold", bgcolor: "#fffbeb", color: "#d97706" }}
                                 />
                                 <Chip
                                   size="small"
                                   label={cat.label}
                                   sx={{
-                                    bgcolor: `${cat.color}22`,
+                                    bgcolor: `${cat.color}15`,
                                     color: cat.color,
-                                    borderColor: `${cat.color}44`,
+                                    borderColor: `${cat.color}33`,
                                     border: "1px solid",
                                     fontWeight: 600,
                                   }}
@@ -509,13 +591,14 @@ function App() {
                                   label={item.Type || item.type || "In-App"}
                                   icon={getChannelIcon(item.Type || item.type)}
                                   variant="outlined"
+                                  sx={{ borderColor: "rgba(0, 0, 0, 0.08)" }}
                                 />
                                 <Typography variant="caption" color="text.secondary">
                                   {formatTime(item.Timestamp || item.timestamp)}
                                 </Typography>
                               </Box>
 
-                              <Typography variant="h6" sx={{ fontSize: "1.1rem", mb: 0.5 }}>
+                              <Typography variant="body1" sx={{ fontSize: "1.05rem", fontWeight: 500, color: "#1e293b", mb: 0.5 }}>
                                 {item.Message || item.message || "No message payload"}
                               </Typography>
                             </Box>
@@ -557,9 +640,9 @@ function App() {
                                   size="small"
                                   label={cat.label}
                                   sx={{
-                                    bgcolor: `${cat.color}22`,
+                                    bgcolor: `${cat.color}15`,
                                     color: cat.color,
-                                    borderColor: `${cat.color}44`,
+                                    borderColor: `${cat.color}33`,
                                     border: "1px solid",
                                     fontWeight: 600,
                                   }}
@@ -569,13 +652,14 @@ function App() {
                                   label={item.Type || item.type || "In-App"}
                                   icon={getChannelIcon(item.Type || item.type)}
                                   variant="outlined"
+                                  sx={{ borderColor: "rgba(0, 0, 0, 0.08)" }}
                                 />
                                 <Typography variant="caption" color="text.secondary">
                                   {formatTime(item.Timestamp || item.timestamp)}
                                 </Typography>
                               </Box>
 
-                              <Typography variant="h6" sx={{ fontSize: "1.1rem", mb: 0.5 }}>
+                              <Typography variant="body1" sx={{ fontSize: "1.05rem", fontWeight: 500, color: "#1e293b", mb: 0.5 }}>
                                 {item.Message || item.message || "No message payload"}
                               </Typography>
                             </Box>
@@ -598,10 +682,10 @@ function App() {
           )}
 
           {/* Telemetry Console */}
-          <Paper className="glass-card" sx={{ mt: 5, p: 3, background: "rgba(15, 23, 42, 0.6) !important" }}>
+          <Paper className="glass-card" sx={{ mt: 5, p: 3, bgcolor: "#ffffff !important" }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
               <Terminal color="primary" />
-              <Typography variant="subtitle1" fontWeight="bold">
+              <Typography variant="subtitle1" fontWeight="bold" sx={{ color: "#0f172a" }}>
                 Logging Middleware Live Telemetry Console
               </Typography>
             </Box>
@@ -610,7 +694,7 @@ function App() {
               sx={{
                 maxHeight: "150px",
                 overflowY: "auto",
-                bgcolor: "#030712",
+                bgcolor: "#0f172a", // Contrast dark console inside light theme
                 p: 2,
                 borderRadius: 2,
                 fontFamily: "monospace",
@@ -618,7 +702,7 @@ function App() {
               }}
             >
               {telemetryLogs.length === 0 ? (
-                <Typography color="text.secondary" variant="body2" sx={{ fontFamily: "monospace" }}>
+                <Typography color="text.secondary" variant="body2" sx={{ fontFamily: "monospace", color: "#94a3b8" }}>
                   Telemetry idle. Trigger operations to view real-time log payloads...
                 </Typography>
               ) : (
@@ -645,6 +729,7 @@ function App() {
                       sx={{
                         fontSize: "0.7rem",
                         height: 18,
+                        color: "#94a3b8",
                         borderColor: "rgba(255,255,255,0.2)",
                       }}
                     />
